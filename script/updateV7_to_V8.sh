@@ -330,10 +330,22 @@ WantedBy=multi-user.target
 }
 
 replateM7ToM8() {
-    cd /var/www/html/mbilling
-    rm -rf MagnusBilling8-current.tar.gz
-    wget --no-check-certificate -O MagnusBilling8-current.tar.gz https://github.com/xceedconnections/magnusbilling8/archive/refs/heads/source.tar.gz
-    tar xzf MagnusBilling8-current.tar.gz --strip-components=1
+    local dest="/var/www/html/mbilling"
+    local tmp
+    tmp="$(mktemp -d /tmp/mbilling-m7tom8.XXXXXX)"
+    cd "${dest}"
+    # Official package first (ExtJS production UI), then overlay GitHub fork code
+    wget --no-check-certificate -O "${tmp}/MagnusBilling8-current.tar.gz" \
+      https://magnusbilling.org/download/MagnusBilling8-current.tar.gz
+    tar xzf "${tmp}/MagnusBilling8-current.tar.gz" -C "${dest}"
+    cp -f "${dest}/index.html" "${tmp}/index.html.ui"
+    wget --no-check-certificate -O "${tmp}/mbilling-source.tar.gz" \
+      https://github.com/xceedconnections/magnusbilling8/archive/refs/heads/source.tar.gz
+    mkdir -p "${tmp}/fork"
+    tar xzf "${tmp}/mbilling-source.tar.gz" -C "${tmp}/fork" --strip-components=1
+    ( cd "${tmp}/fork" && tar cf - --exclude='./index.html' . ) | ( cd "${dest}" && tar xf - )
+    cp -f "${tmp}/index.html.ui" "${dest}/index.html"
+    rm -rf "${tmp}"
     /var/www/html/mbilling/protected/commands/update.sh
 }
 

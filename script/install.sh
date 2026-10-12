@@ -29,28 +29,62 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# This fork (xceedconnections) — all installer downloads come from here
+# This fork (xceedconnections) — custom code downloads come from here
 MB_GITHUB_OWNER="xceedconnections"
 MB_GITHUB_REPO="magnusbilling8"
 MB_GITHUB_BRANCH="source"
 MB_GITHUB_RAW="https://raw.githubusercontent.com/${MB_GITHUB_OWNER}/${MB_GITHUB_REPO}/${MB_GITHUB_BRANCH}"
 MB_GITHUB_ARCHIVE="https://github.com/${MB_GITHUB_OWNER}/${MB_GITHUB_REPO}/archive/refs/heads/${MB_GITHUB_BRANCH}.tar.gz"
+# Official release ships compiled ExtJS UI (index.html microloader + theme builds).
+# Git source alone hangs on the splash logo (bootstrap.js / *.json are gitignored).
+MB_OFFICIAL_PACKAGE_URL="https://magnusbilling.org/download/MagnusBilling8-current.tar.gz"
 
 download_mbilling_tree()
 {
     local dest="${1:-/var/www/html/mbilling}"
+    local tmp
+    tmp="$(mktemp -d /tmp/mbilling-download.XXXXXX)"
+
     mkdir -p "${dest}"
-    cd "${dest}"
-    rm -f mbilling-source.tar.gz
-    if ! wget -O mbilling-source.tar.gz "${MB_GITHUB_ARCHIVE}"; then
+    cd "${dest}" || exit 1
+
+    echo "Downloading ExtJS UI package from magnusbilling.org..."
+    if ! wget -O "${tmp}/MagnusBilling8-current.tar.gz" "${MB_OFFICIAL_PACKAGE_URL}"; then
+        echo "Unable to download UI package from ${MB_OFFICIAL_PACKAGE_URL}"
+        rm -rf "${tmp}"
+        exit 1
+    fi
+    if ! tar xzf "${tmp}/MagnusBilling8-current.tar.gz" -C "${dest}"; then
+        echo "Unable to extract UI package."
+        rm -rf "${tmp}"
+        exit 1
+    fi
+    # Keep production splash/loader (inline Ext.Boot) — Git source still points at bootstrap.js
+    cp -f "${dest}/index.html" "${tmp}/index.html.ui"
+
+    echo "Overlaying custom MagnusBilling from ${MB_GITHUB_ARCHIVE}..."
+    if ! wget -O "${tmp}/mbilling-source.tar.gz" "${MB_GITHUB_ARCHIVE}"; then
         echo "Unable to download MagnusBilling from ${MB_GITHUB_ARCHIVE}"
+        rm -rf "${tmp}"
         exit 1
     fi
-    if ! tar xzf mbilling-source.tar.gz --strip-components=1; then
+    mkdir -p "${tmp}/fork"
+    if ! tar xzf "${tmp}/mbilling-source.tar.gz" -C "${tmp}/fork" --strip-components=1; then
         echo "Unable to extract MagnusBilling archive."
+        rm -rf "${tmp}"
         exit 1
     fi
-    rm -f mbilling-source.tar.gz
+    # Overlay fork code; keep official production index.html + theme manifests/builds
+    ( cd "${tmp}/fork" && tar cf - --exclude='./index.html' . ) | ( cd "${dest}" && tar xf - )
+    cp -f "${tmp}/index.html.ui" "${dest}/index.html"
+
+    if [[ ! -f "${dest}/black-neptune.json" ]]; then
+        echo "ExtJS theme manifests are missing after install. UI will hang on the logo."
+        rm -rf "${tmp}"
+        exit 1
+    fi
+
+    rm -rf "${tmp}"
 }
 
 # ---------------------------------------------------------------------------
