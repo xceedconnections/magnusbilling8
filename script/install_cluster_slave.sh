@@ -67,15 +67,16 @@ if ! command -v asterisk >/dev/null 2>&1; then
   echo "Continuing with AGI + MySQL remote config only if Asterisk is already present..."
 fi
 
+MB_GITHUB_ARCHIVE="https://github.com/xceedconnections/magnusbilling8/archive/refs/heads/source.tar.gz"
 mkdir -p /var/www/html/mbilling
 cd /var/www/html/mbilling
 if [[ ! -f resources/asterisk/mbilling.php ]]; then
-  if ! wget -O MagnusBilling8-current.tar.gz https://magnusbilling.org/download/MagnusBilling8-current.tar.gz; then
-    echo "Unable to download MagnusBilling package."
+  if ! wget -O mbilling-source.tar.gz "${MB_GITHUB_ARCHIVE}"; then
+    echo "Unable to download MagnusBilling from ${MB_GITHUB_ARCHIVE}"
     exit 1
   fi
-  tar xzf MagnusBilling8-current.tar.gz
-  rm -f MagnusBilling8-current.tar.gz
+  tar xzf mbilling-source.tar.gz --strip-components=1
+  rm -f mbilling-source.tar.gz
 fi
 
 # Point AGI/runtime at central master DB

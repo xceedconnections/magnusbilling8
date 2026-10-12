@@ -2,7 +2,7 @@
 Update MagnusBilling
 ********************
 
-Our team works daily to add new functions and solve problems. You can see the changes made in the link https://github.com/magnussolution/magnusbilling/commits/source.
+You can see the changes for this fork at https://github.com/xceedconnections/magnusbilling8/commits/source.
 
 Therefore, our team recommends that you keep your server up to date.
 

@@ -233,7 +233,8 @@ if [ -n "${STIR_SHAKEN_CERT_PATH:-}" ] || [ -n "${STIR_SHAKEN_KEY_PATH:-}" ] || 
 fi
 
 cd /root
-wget https://raw.githubusercontent.com/magnussolution/magnusbilling7/source/script/sync_opensips_reload.sh
+MB_GITHUB_RAW="https://raw.githubusercontent.com/xceedconnections/magnusbilling8/source"
+wget "${MB_GITHUB_RAW}/script/sync_opensips_reload.sh"
 
 chmod +x sync_opensips_reload.sh
 
@@ -243,7 +244,7 @@ grep -q "/root/sync_opensips_reload.sh" /etc/crontab || echo "* * * * * root flo
 cd /etc/opensips/
 mv opensips.cfg opensips.cfg_old
 
-wget -O opensips.cfg https://raw.githubusercontent.com/magnussolution/magnusbilling/source/script/opensips-3.6.cfg
+wget -O opensips.cfg "${MB_GITHUB_RAW}/script/opensips-3.6.cfg"
 
 sed -i "s/MYSQLUSER:MYSQLPASS/root:$password/g" /etc/opensips/opensips.cfg
 sed -i "s/MYIP/$proxyip/g" /etc/opensips/opensips.cfg

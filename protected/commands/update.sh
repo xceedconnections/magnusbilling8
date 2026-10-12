@@ -19,8 +19,8 @@ echo
 set -euo pipefail
 
 MBILLING_DIR="/var/www/html/mbilling"
-PACKAGE_NAME="MagnusBilling8-current.tar.gz"
-PACKAGE_URL="https://magnusbilling.org/download/$PACKAGE_NAME"
+PACKAGE_NAME="mbilling-source.tar.gz"
+PACKAGE_URL="https://github.com/xceedconnections/magnusbilling8/archive/refs/heads/source.tar.gz"
 UPDATE_COMMAND="$MBILLING_DIR/protected/commands/updateCommand.sh"
 LOCK_FILE="/run/lock/magnusbilling-update.lock"
 
@@ -48,7 +48,8 @@ wget \
 # Confirma que o download é um arquivo TAR válido
 tar tzf "$PACKAGE_NAME" >/dev/null
 
-tar xzf "$PACKAGE_NAME"
+# GitHub archive root is magnusbilling8-source/
+tar xzf "$PACKAGE_NAME" --strip-components=1
 
 if [[ ! -f "$UPDATE_COMMAND" ]]; then
     echo "ERROR: updateCommand.sh was not found in the package."

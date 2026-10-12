@@ -29,6 +29,30 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# This fork (xceedconnections) — all installer downloads come from here
+MB_GITHUB_OWNER="xceedconnections"
+MB_GITHUB_REPO="magnusbilling8"
+MB_GITHUB_BRANCH="source"
+MB_GITHUB_RAW="https://raw.githubusercontent.com/${MB_GITHUB_OWNER}/${MB_GITHUB_REPO}/${MB_GITHUB_BRANCH}"
+MB_GITHUB_ARCHIVE="https://github.com/${MB_GITHUB_OWNER}/${MB_GITHUB_REPO}/archive/refs/heads/${MB_GITHUB_BRANCH}.tar.gz"
+
+download_mbilling_tree()
+{
+    local dest="${1:-/var/www/html/mbilling}"
+    mkdir -p "${dest}"
+    cd "${dest}"
+    rm -f mbilling-source.tar.gz
+    if ! wget -O mbilling-source.tar.gz "${MB_GITHUB_ARCHIVE}"; then
+        echo "Unable to download MagnusBilling from ${MB_GITHUB_ARCHIVE}"
+        exit 1
+    fi
+    if ! tar xzf mbilling-source.tar.gz --strip-components=1; then
+        echo "Unable to extract MagnusBilling archive."
+        exit 1
+    fi
+    rm -f mbilling-source.tar.gz
+}
+
 # ---------------------------------------------------------------------------
 # Interactive install modes
 #   1) Fresh MagnusBilling 8 (portal + Asterisk + MariaDB)
@@ -88,11 +112,9 @@ select_install_mode()
                 exec bash "${candidate}" "${master_ip}"
               fi
             done
-            echo "Downloading cluster slave installer..."
+            echo "Downloading cluster slave installer from ${MB_GITHUB_OWNER}/${MB_GITHUB_REPO}..."
             curl -fsSL -o /tmp/install_cluster_slave.sh \
-              https://raw.githubusercontent.com/magnussolution/magnusbilling/source/script/install_cluster_slave.sh \
-              || curl -fsSL -o /tmp/install_cluster_slave.sh \
-              https://raw.githubusercontent.com/magnussolution/magnusbilling7/source/script/install_cluster_slave.sh
+              "${MB_GITHUB_RAW}/script/install_cluster_slave.sh"
             chmod +x /tmp/install_cluster_slave.sh
             exec bash /tmp/install_cluster_slave.sh "${master_ip}"
             ;;
@@ -111,11 +133,9 @@ select_install_mode()
                 exec bash "${candidate}"
               fi
             done
-            echo "Downloading attach-cluster helper..."
+            echo "Downloading attach-cluster helper from ${MB_GITHUB_OWNER}/${MB_GITHUB_REPO}..."
             curl -fsSL -o /tmp/attach_cluster_server.sh \
-              https://raw.githubusercontent.com/magnussolution/magnusbilling/source/script/attach_cluster_server.sh \
-              || curl -fsSL -o /tmp/attach_cluster_server.sh \
-              https://raw.githubusercontent.com/magnussolution/magnusbilling7/source/script/attach_cluster_server.sh
+              "${MB_GITHUB_RAW}/script/attach_cluster_server.sh"
             chmod +x /tmp/attach_cluster_server.sh
             exec bash /tmp/attach_cluster_server.sh
             ;;
@@ -316,16 +336,7 @@ apt_install libncurses-dev mariadb-server htop sngrep firewalld fail2ban cron rs
 
 configure_pjsip_dns
 
-mkdir -p /var/www/html/mbilling
-cd /var/www/html/mbilling
-if ! wget -O MagnusBilling8-current.tar.gz https://magnusbilling.org/download/MagnusBilling8-current.tar.gz; then
-    echo "Unable to download MagnusBilling."
-    exit 1
-fi
-if ! tar xzf MagnusBilling8-current.tar.gz; then
-    echo "Unable to extract MagnusBilling."
-    exit 1
-fi
+download_mbilling_tree /var/www/html/mbilling
 
 
 echo
@@ -336,7 +347,7 @@ cd /usr/src
 rm -rf asterisk*
 clear
 
-wget https://raw.githubusercontent.com/magnussolution/magnusbilling/source/script/asterisk-20.9.2.tar.gz
+wget "${MB_GITHUB_RAW}/script/asterisk-20.9.2.tar.gz"
 tar xzvf asterisk-20.9.2.tar.gz
 rm -rf asterisk-20.9.2.tar.gz
 cd asterisk-*
@@ -512,7 +523,8 @@ installBr() {
    language='br'
    cp -rf /var/www/html/mbilling/script/br /var/lib/asterisk/
    cd /var/lib/asterisk
-   wget https://raw.githubusercontent.com/magnussolution/magnusbilling7/source/script/sounds/Sounds-br.tar.gz
+   wget "${MB_GITHUB_RAW}/script/sounds/Sounds-br.tar.gz" \
+     || wget https://raw.githubusercontent.com/magnussolution/magnusbilling7/source/script/sounds/Sounds-br.tar.gz
    tar xzvf Sounds-br.tar.gz
 }
 
@@ -527,7 +539,8 @@ installEs() {
     cp -n /var/www/html/mbilling/resources/sounds/en/* /var/lib/asterisk/sounds
     mkdir /var/lib/asterisk/es
     cd /var/lib/asterisk/es
-   wget https://raw.githubusercontent.com/magnussolution/magnusbilling7/source/script/sounds/Sounds-es.tar.gz
+   wget "${MB_GITHUB_RAW}/script/sounds/Sounds-es.tar.gz" \
+     || wget https://raw.githubusercontent.com/magnussolution/magnusbilling7/source/script/sounds/Sounds-es.tar.gz
    tar xzvf Sounds-es.tar.gz
 }
 

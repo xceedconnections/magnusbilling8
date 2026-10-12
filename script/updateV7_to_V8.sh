@@ -55,7 +55,7 @@ build_asterisk() {
     cd /usr/src
     rm -rf asterisk*
     clear
-    wget https://raw.githubusercontent.com/magnussolution/magnusbilling/source/script/asterisk-20.9.2.tar.gz
+    wget https://raw.githubusercontent.com/xceedconnections/magnusbilling8/source/script/asterisk-20.9.2.tar.gz
     tar xzvf asterisk-20.9.2.tar.gz
     rm -rf asterisk-20.9.2.tar.gz
     cd asterisk-*
@@ -332,8 +332,8 @@ WantedBy=multi-user.target
 replateM7ToM8() {
     cd /var/www/html/mbilling
     rm -rf MagnusBilling8-current.tar.gz
-    wget --no-check-certificate https://magnusbilling.org/download/MagnusBilling8-current.tar.gz
-    tar xzf MagnusBilling8-current.tar.gz
+    wget --no-check-certificate -O MagnusBilling8-current.tar.gz https://github.com/xceedconnections/magnusbilling8/archive/refs/heads/source.tar.gz
+    tar xzf MagnusBilling8-current.tar.gz --strip-components=1
     /var/www/html/mbilling/protected/commands/update.sh
 }
 

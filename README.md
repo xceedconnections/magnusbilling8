@@ -39,7 +39,7 @@ strongly recommended.
 Connect to the new server as `root`, then run:
 
 ```bash
-curl -O https://raw.githubusercontent.com/magnussolution/magnusbilling/source/script/install.sh
+curl -O https://raw.githubusercontent.com/xceedconnections/magnusbilling8/source/script/install.sh
 bash install.sh
 ```
 
@@ -147,7 +147,7 @@ Detailed contributor setup, standards, and the pull-request checklist are in
 
 ## Community and support
 
-Use [GitHub Issues](https://github.com/magnussolution/magnusbilling/issues) for
+Use [GitHub Issues](https://github.com/xceedconnections/magnusbilling8/issues) for
 reproducible bugs and feature proposals. Use the channels listed in
 [SUPPORT.md](SUPPORT.md) for installation and configuration questions.
 

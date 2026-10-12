@@ -28,7 +28,7 @@ Prerequisites
 
 On a clean Debian/Ubuntu host as root::
 
-   curl -O https://raw.githubusercontent.com/magnussolution/magnusbilling/source/script/install.sh
+   curl -O https://raw.githubusercontent.com/xceedconnections/magnusbilling8/source/script/install.sh
    bash install.sh
 
 The installer asks for a mode:
@@ -46,7 +46,7 @@ password, then note the MariaDB password in ``/root/passwordMysql.log``.
 
 On a second host::
 
-   curl -O https://raw.githubusercontent.com/magnussolution/magnusbilling/source/script/installOpenSips-3.6.sh
+   curl -O https://raw.githubusercontent.com/xceedconnections/magnusbilling8/source/script/installOpenSips-3.6.sh
    chmod +x installOpenSips-3.6.sh
    ./installOpenSips-3.6.sh PUBLIC_IP MASTER_IP [LOCALNET]
 
