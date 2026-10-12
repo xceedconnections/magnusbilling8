@@ -13,6 +13,9 @@ Ext.define('MBilling.view.servers.Combo', {
     forceSelection: true,
     editable: false,
     valueField: 'id',
+    // When true, only Asterisk / MagnusBilling call-processing nodes are listed
+    // (used to pin a SIP account to a slave).
+    asteriskOnly: false,
     initComponent: function() {
         var me = this;
         me.store = Ext.create('MBilling.store.Servers', {
@@ -22,6 +25,14 @@ Ext.define('MBilling.view.servers.Combo', {
                 limitParam: undefined
             }
         });
+        if (me.asteriskOnly) {
+            me.store.on('load', function(store) {
+                store.filterBy(function(rec) {
+                    var type = (rec.get('type') || '').toLowerCase();
+                    return type === 'asterisk' || type === 'mbilling';
+                });
+            });
+        }
         me.callParent(arguments);
     }
 });

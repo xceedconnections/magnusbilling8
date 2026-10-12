@@ -127,6 +127,12 @@ Ext.define('MBilling.view.sip.List', {
             hideable: !App.user.isClient,
             flex: 1
         }, {
+            header: t('Asterisk server'),
+            dataIndex: 'idServername',
+            hidden: true,
+            hideable: App.user.isAdmin,
+            flex: 2
+        }, {
             header: t('Directmedia'),
             dataIndex: 'directmedia',
             hidden: true,

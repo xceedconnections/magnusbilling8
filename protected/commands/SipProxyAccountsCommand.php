@@ -70,10 +70,12 @@ class SipProxyAccountsCommand extends ConsoleCommand
                 $remoteProxyIP = $server->host;
             }
 
+            $preferPrivate = $this->ipIsPrivate($hostname);
+
             $sqlproxy = 'TRUNCATE subscriber;';
             $sqlproxy .= "TRUNCATE domain;";
             $sqlproxy .= "INSERT INTO $dbname.domain (domain) VALUES ('" . $remoteProxyIP . "');";
-            $sqlproxy .= "INSERT INTO $dbname.$table (username,domain,password,ha1,accountcode,trace,cpslimit) VALUES ";
+            $sqlproxy .= "INSERT INTO $dbname.$table (username,domain,password,ha1,accountcode,trace,cpslimit,pin_server,directmedia) VALUES ";
             $sqlproxyadd = 'TRUNCATE address;';
             $sqlproxyadd .= "INSERT INTO $dbname.address (grp,ip,port,context_info) VALUES ";
             $sqlDid = 'TRUNCATE did;';
@@ -101,15 +103,20 @@ class SipProxyAccountsCommand extends ConsoleCommand
                 //
             }
 
+            $this->ensureProxyColumns($con);
+
             foreach ($modelTrunk as $key => $trunk) {
-                $sqlproxyadd .= "('0', '$trunk->host','0', '" . $trunk->trunkcode . '|' . $trunk->trunkcode . '|500|0|' . $techprefix_length . "'),";
+                $media = OpenSipsClusterHelper::mediaBypassFlag(isset($trunk->directmedia) ? $trunk->directmedia : 'no');
+                $sqlproxyadd .= "('0', '$trunk->host','0', '" . $trunk->trunkcode . '|' . $trunk->trunkcode . '|500|0|' . $techprefix_length . '||' . $media . "'),";
             }
             foreach ($modelSip as $key => $sip) {
+                $pin   = OpenSipsClusterHelper::sipPinDestination($sip, $preferPrivate);
+                $media = OpenSipsClusterHelper::mediaBypassFlag($sip->directmedia);
 
                 if ($sip->host == 'dynamic') {
-                    $sqlproxy .= " ('" . $sip->defaultuser . "', '$remoteProxyIP','" . $sip->secret . "','" . md5($sip->defaultuser . ':' . $remoteProxyIP . ':' . $sip->secret) . "', '" . $sip->idUser->username . "', '" . $sip->trace . "','" . $sip->idUser->cpslimit . "'),";
+                    $sqlproxy .= " ('" . $sip->defaultuser . "', '$remoteProxyIP','" . $sip->secret . "','" . md5($sip->defaultuser . ':' . $remoteProxyIP . ':' . $sip->secret) . "', '" . $sip->idUser->username . "', '" . $sip->trace . "','" . $sip->idUser->cpslimit . "','" . $pin . "','" . $media . "'),";
                 } else {
-                    $sqlproxyadd .= "('0', '$sip->host','0', '" . $sip->idUser->username . '|' . $sip->name . '|' . $sip->idUser->cpslimit . '|' . $sip->techprefix . '|' . $techprefix_length . "'),";
+                    $sqlproxyadd .= "('0', '$sip->host','0', '" . $sip->idUser->username . '|' . $sip->name . '|' . $sip->idUser->cpslimit . '|' . $sip->techprefix . '|' . $techprefix_length . '|' . $pin . '|' . $media . "'),";
                 }
             }
 
@@ -122,13 +129,6 @@ class SipProxyAccountsCommand extends ConsoleCommand
                     $destination = isset($modelDidDestination->idSip->name) ? $modelDidDestination->idSip->name : '';
                     $sqlDid .= "('$did->did','" . $did->idServer->host . ":" . $did->idServer->sip_port . "', '" . $destination . "' ),";
                 }
-            }
-
-            $sql = "ALTER TABLE subscriber ADD  cpslimit INT( 11 ) NOT NULL DEFAULT  '-1'";
-            try {
-                $con->createCommand($sql)->execute();
-            } catch (Exception $e) {
-                //
             }
 
             $sqlproxy = substr($sqlproxy, 0, -1) . ';';
@@ -156,5 +156,44 @@ class SipProxyAccountsCommand extends ConsoleCommand
 
         }
 
+    }
+
+    protected function ensureProxyColumns(CDbConnection $con)
+    {
+        $alters = [
+            "ALTER TABLE subscriber ADD cpslimit INT(11) NOT NULL DEFAULT '-1'",
+            "ALTER TABLE subscriber ADD pin_server VARCHAR(80) NOT NULL DEFAULT ''",
+            "ALTER TABLE subscriber ADD directmedia VARCHAR(10) NOT NULL DEFAULT 'no'",
+            "ALTER TABLE address MODIFY context_info VARCHAR(255) NULL DEFAULT NULL",
+        ];
+        foreach ($alters as $sql) {
+            try {
+                $con->createCommand($sql)->execute();
+            } catch (Exception $e) {
+                // column/table already migrated
+            }
+        }
+    }
+
+    protected function ipIsPrivate($ip)
+    {
+        $pri_addrs = [
+            '10.0.0.0|10.255.255.255',
+            '172.16.0.0|172.31.255.255',
+            '192.168.0.0|192.168.255.255',
+            '169.254.0.0|169.254.255.255',
+            '127.0.0.0|127.255.255.255',
+        ];
+
+        $long_ip = ip2long($ip);
+        if ($long_ip != -1) {
+            foreach ($pri_addrs as $pri_addr) {
+                list($start, $end) = explode('|', $pri_addr);
+                if ($long_ip >= ip2long($start) && $long_ip <= ip2long($end)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

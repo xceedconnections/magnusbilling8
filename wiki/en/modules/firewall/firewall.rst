@@ -14,12 +14,25 @@ IP
 Action
 ------
 
-| With this option set to YES, the IP will be added to the fail2ban ip-blacklist and will remain blocked permanently.
-| The NO option blocks the IP temporarily according to the parameters in /etc/fail2ban/jail.local.
-|     
-|     By default, the IP stays blocked for 10 minutes.
+| ``Temp ban`` — temporary Fail2ban ban (SSH, login, DDoS, SQL probe, Asterisk, etc.).
+| ``Permanent ban`` — Fail2ban ``ip-blacklist`` jail (stays blocked until you Unban).
+| ``IgnoreIP`` — never ban this IP (trusted).
+
+| The Firewall list is refreshed from live Fail2ban jails every ~2 minutes
+| (``cron.php failtwobanip``), including ``sshd``, ``asterisk-iptables``,
+| ``mbilling_login``, ``mbilling_ddos``, ``mbilling_sql``, and blacklist.
 
 
+.. _firewall-unban:
+
+Unban
+-----
+
+| Select one or more rows and click **Unban**.
+| The IP is removed from Fail2ban **immediately** on this server and disappears
+| from the Firewall menu.
+| It stays free until the **next** real attack matches a jail again
+| (it is not re-banned automatically without a new attempt).
 
 
 .. _firewall-description:
@@ -27,10 +40,11 @@ Action
 Description
 -----------
 
-| This information is captured from the log file /var/log/fail2ban.log.
-| You can follow this log with the command 
-|     
+| Jail / type comes from Fail2ban (for example ``sshd``, ``mbilling_sql``).
+| Follow live bans with::
+|
 |     tail -f /var/log/fail2ban.log
+|     fail2ban-client status
 
 
 

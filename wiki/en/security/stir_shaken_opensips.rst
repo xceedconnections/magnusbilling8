@@ -113,6 +113,11 @@ The installer performs these actions:
 If ``STIR_SHAKEN_CERT_PATH``, ``STIR_SHAKEN_KEY_PATH``, and
 ``STIR_SHAKEN_X5U`` are omitted, installation continues with signing disabled.
 
+After the SipProxy server is registered in MagnusBilling, administrators can
+also manage the same ``stir_shaken_config`` row from
+**Settings → STIR/SHAKEN** in the panel (no SSH required for day-to-day policy
+changes).
+
 Upgrade an existing proxy
 -------------------------
 

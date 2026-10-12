@@ -4,18 +4,18 @@
  * Actions of module "Firewall".
  *
  * MagnusBilling <info@magnusbilling.com>
- * 01/02/2014
- * Defaults!/usr/bin/fail2ban-client !requiretty
+ * Instant unban: removes Fail2ban ban immediately and deletes the DB row.
+ * The IP stays free until the next real attack matches a jail again.
  */
 
 class FirewallController extends Controller
 {
 
     public $attributeOrder = 'date DESC';
-    public $extraValues         = ['idServer' => 'name'];
+    public $extraValues    = ['idServer' => 'name'];
+
     public function init()
     {
-
         $this->instanceModel = new Firewall;
         $this->abstractModel = Firewall::model();
         $this->titleReport   = Yii::t('zii', 'Firewall');
@@ -32,11 +32,9 @@ class FirewallController extends Controller
 
         $values = $this->getAttributesRequest();
         $namePk = 'id';
-        $ids    = array();
+        $ids    = [];
 
-        # Se existe a chave 0, indica que existe um array interno (mais de 1 registro selecionado)
         if (array_key_exists(0, $values)) {
-            # percorre o array para excluir o(s) registro(s)
             foreach ($values as $value) {
                 array_push($ids, $value[$namePk]);
             }
@@ -44,18 +42,38 @@ class FirewallController extends Controller
             array_push($ids, $values[$namePk]);
         }
 
+        $unbanned = [];
         foreach ($ids as $value) {
-
-
             $model = Firewall::model()->findByPk((int) $value);
+            if (! isset($model->id)) {
+                continue;
+            }
+
+            $ip = trim($model->ip);
+            FailtwobanipCommand::unbanIpLocal($ip);
+
+            // Mark remote slaves/proxies for next sync as well (instant on master already done).
             $model->action = 3;
             $model->save();
-            LogUsers::model()->deleteAll('ip = :key', [':key' => $model->ip]);
+
+            // Delete immediately so the Firewall list clears now.
+            $ipCopy = $model->ip;
+            $model->delete();
+            LogUsers::model()->deleteAll('ip = :key', [':key' => $ipCopy]);
+            $unbanned[] = $ipCopy;
         }
 
-        echo json_encode(array(
+        // Also process any leftover action=3 rows on this host right away.
+        try {
+            Yii::app()->db->createCommand('DELETE FROM pkg_firewall WHERE action = 3')->execute();
+        } catch (Exception $e) {
+        }
+
+        echo json_encode([
             $this->nameSuccess => true,
-            $this->nameMsg     => 'The IP wil unban in 1 minute',
-        ));
+            $this->nameMsg     => count($unbanned)
+                ? ('IP unbanned instantly: ' . implode(', ', $unbanned))
+                : 'IP unbanned instantly',
+        ]);
     }
 }

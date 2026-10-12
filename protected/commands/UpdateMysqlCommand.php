@@ -448,6 +448,47 @@ class UpdateMysqlCommand extends CConsoleCommand
             $this->update($version);
         }
 
+        //2026-10-13 open cluster: SIP pin to Asterisk + STIR/SHAKEN menu
+        if ($version == '8.0.0.15') {
+            $this->logMessage('Applying database migration 8.0.0.15 -> 8.0.0.16 (open cluster).');
+            if (! $this->columnExists('pkg_sip', 'id_server')) {
+                $this->executeDB(
+                    'ALTER TABLE `pkg_sip` ADD `id_server` INT NULL DEFAULT NULL AFTER `id_trunk_group`'
+                );
+                $this->executeDB(
+                    'ALTER TABLE `pkg_sip` ADD KEY `idx_pkg_sip_id_server` (`id_server`)'
+                );
+            }
+
+            $this->executeDB(
+                "INSERT INTO pkg_module (text,module,icon_cls,id_module,priority)
+                 SELECT 't(''STIR/SHAKEN'')','stirShaken','x-fa fa-shield',12,98
+                 WHERE NOT EXISTS (SELECT 1 FROM pkg_module WHERE module='stirShaken')"
+            );
+            $this->executeDB(
+                "INSERT INTO pkg_group_module (id_group,id_module,action,show_menu,createShortCut,createQuickStart)
+                 SELECT 1,m.id,'crud',1,0,0 FROM pkg_module m
+                 WHERE m.module='stirShaken'
+                 AND NOT EXISTS (
+                     SELECT 1 FROM pkg_group_module gm WHERE gm.id_group=1 AND gm.id_module=m.id
+                 )"
+            );
+
+            if (! $this->indexExists('pkg_cdr', 'idx_cdr_starttime_user')) {
+                $this->executeDB(
+                    'ALTER TABLE `pkg_cdr` ADD INDEX `idx_cdr_starttime_user` (`starttime`, `id_user`)'
+                );
+            }
+            if (! $this->indexExists('pkg_cdr', 'idx_cdr_id_server_start')) {
+                $this->executeDB(
+                    'ALTER TABLE `pkg_cdr` ADD INDEX `idx_cdr_id_server_start` (`id_server`, `starttime`)'
+                );
+            }
+
+            $version = '8.0.0.16';
+            $this->update($version);
+        }
+
     }
 
     private function tableExists($table)

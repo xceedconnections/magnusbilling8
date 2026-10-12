@@ -87,6 +87,36 @@ for command_name in addmyip delmyip releaseAll; do
 done
 
 ##update database
+# Ensure Firewall menu can unban instantly via fail2ban-client
+if [ ! -f /etc/sudoers.d/mbilling-fail2ban ]; then
+  echo "www-data ALL=(root) NOPASSWD: /usr/bin/fail2ban-client" > /etc/sudoers.d/mbilling-fail2ban
+  chmod 440 /etc/sudoers.d/mbilling-fail2ban
+fi
+
+# Ensure SQL-injection jail exists on upgraded hosts
+if [ -d /etc/fail2ban/filter.d ] && [ ! -f /etc/fail2ban/filter.d/mbilling_sql.conf ]; then
+  cat > /etc/fail2ban/filter.d/mbilling_sql.conf <<'EOF'
+[INCLUDES]
+[Definition]
+failregex = ^<HOST> .*"(GET|POST|HEAD).*(?i)(union([+%%20]|%%20)?select|sleep\(|benchmark\(|information_schema|or[+%%20]1=1|into[+%%20]outfile).*
+            ^<HOST> .*"(GET|POST).*(%%27|%%22).*(%%20or%%20|%%20and%%20).*
+ignoreregex =
+EOF
+  if [ -f /etc/fail2ban/jail.local ] && ! grep -q '\[mbilling_sql\]' /etc/fail2ban/jail.local; then
+    cat >> /etc/fail2ban/jail.local <<'EOF'
+
+[mbilling_sql]
+enabled  = true
+filter   = mbilling_sql
+logpath  = /var/log/apache2/access.log
+maxretry = 5
+findtime = 600
+bantime = 3600
+EOF
+    systemctl reload fail2ban 2>/dev/null || true
+  fi
+fi
+
 if ! php /var/www/html/mbilling/cron.php UpdateMysql; then
     echo "The database migration failed. The MagnusBilling update was aborted."
     exit 1

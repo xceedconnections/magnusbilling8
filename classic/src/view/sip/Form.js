@@ -230,7 +230,8 @@ Ext.define('MBilling.view.sip.Form', {
                     name: 'directmedia',
                     fieldLabel: t('Directmedia'),
                     value: 'no',
-                    allowBlank: !App.user.isAdmin
+                    allowBlank: !App.user.isAdmin,
+                    emptyText: t('yes = customer media IP bypass on SIP Proxy')
                 }, {
                     xtype: 'yesnostringcombo',
                     name: 'qualify',
@@ -250,6 +251,14 @@ Ext.define('MBilling.view.sip.Form', {
                     labelWidth: 170
                 },
                 items: [, {
+                    xtype: 'serverscombo',
+                    name: 'id_server',
+                    fieldLabel: t('Asterisk server'),
+                    asteriskOnly: true,
+                    hidden: !App.user.isAdmin,
+                    allowBlank: true,
+                    emptyText: t('Empty = SIP Proxy weight balance')
+                }, {
                     xtype: 'trunkgrouplookup',
                     ownerForm: me,
                     name: 'id_trunk_group',

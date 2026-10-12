@@ -22,6 +22,7 @@ class SipController extends Controller
     public $extraValues    = [
         'idUser'       => 'username',
         'idTrunkGroup' => 'name',
+        'idServer'     => 'name',
     ];
 
     private $sipShowPeers = [];
@@ -37,15 +38,22 @@ class SipController extends Controller
             'pk'          => 'id',
             'fieldReport' => 'name',
         ],
+        'id_server'      => [
+            'table'       => 'pkg_servers',
+            'pk'          => 'id',
+            'fieldReport' => 'name',
+        ],
     ];
 
     public $fieldsInvisibleClient = [
         'id_trunk_group',
+        'id_server',
         'amd'
     ];
 
     public $fieldsInvisibleAgent = [
         'id_trunk_group',
+        'id_server',
         'amd'
     ];
 

@@ -27,10 +27,115 @@ if [[ ${EUID} -ne 0 ]]; then
   exit 1
 fi
 
-if [[ -f /var/www/html/mbilling/index.php ]]; then
-  echo "This server already has MagnusBilling installed";
-  exit;
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ---------------------------------------------------------------------------
+# Interactive install modes
+#   1) Fresh MagnusBilling 8 (portal + Asterisk + MariaDB)
+#   2) Make THIS server a cluster slave (asks for main portal IP)
+#   3) On MAIN portal: attach / register a new cluster slave IP
+# ---------------------------------------------------------------------------
+select_install_mode()
+{
+    local has_portal=0
+    [[ -f /var/www/html/mbilling/index.php ]] && has_portal=1
+
+    echo
+    echo "Select installation mode:"
+    echo "  1) Install MagnusBilling 8 on a fresh Debian/Ubuntu server (portal + Asterisk)"
+    echo "  2) Make THIS server a cluster slave (Asterisk only; enter MAIN portal IP)"
+    echo "  3) Attach a cluster server to THIS portal (run on MAIN; enter new slave IP)"
+    echo
+    if [[ "${has_portal}" -eq 1 ]]; then
+        echo "Note: MagnusBilling portal is already installed on this host."
+        echo "      Options 1 and 2 are blocked; use option 3 to add slaves."
+        echo
+    fi
+
+    local choice="${MB_INSTALL_MODE:-}"
+    local master_ip=""
+    # Non-interactive: bash install.sh 1 | bash install.sh 2 1.2.3.4 | bash install.sh 3
+    if [[ -z "${choice}" && "${1:-}" =~ ^[123]$ ]]; then
+        choice="$1"
+        shift || true
+        master_ip="${1:-}"
+    fi
+    if [[ -z "${choice}" ]]; then
+        read -r -p "Enter choice [1-3]: " choice
+    fi
+
+    case "${choice}" in
+        1)
+            if [[ "${has_portal}" -eq 1 ]]; then
+                echo "This server already has MagnusBilling installed."
+                exit 1
+            fi
+            echo "Starting fresh MagnusBilling 8 install..."
+            # Remaining args (en/br/es) stay for language selection later via $1
+            ;;
+        2)
+            if [[ "${has_portal}" -eq 1 ]]; then
+                echo "This host already has the portal. Use a clean VM for option 2 (slave)."
+                exit 1
+            fi
+            for candidate in \
+              "${SCRIPT_DIR}/install_cluster_slave.sh" \
+              /usr/local/sbin/mb-install-slave \
+              /root/magnusbilling-scripts/install_cluster_slave.sh \
+              /var/www/html/mbilling/script/install_cluster_slave.sh
+            do
+              if [[ -f "${candidate}" ]]; then
+                exec bash "${candidate}" "${master_ip}"
+              fi
+            done
+            echo "Downloading cluster slave installer..."
+            curl -fsSL -o /tmp/install_cluster_slave.sh \
+              https://raw.githubusercontent.com/magnussolution/magnusbilling/source/script/install_cluster_slave.sh \
+              || curl -fsSL -o /tmp/install_cluster_slave.sh \
+              https://raw.githubusercontent.com/magnussolution/magnusbilling7/source/script/install_cluster_slave.sh
+            chmod +x /tmp/install_cluster_slave.sh
+            exec bash /tmp/install_cluster_slave.sh "${master_ip}"
+            ;;
+        3)
+            if [[ "${has_portal}" -ne 1 ]]; then
+                echo "Portal not found. Install MagnusBilling first (option 1)."
+                exit 1
+            fi
+            for candidate in \
+              "${SCRIPT_DIR}/attach_cluster_server.sh" \
+              /usr/local/sbin/mb-attach-cluster \
+              /root/magnusbilling-scripts/attach_cluster_server.sh \
+              /var/www/html/mbilling/script/attach_cluster_server.sh
+            do
+              if [[ -f "${candidate}" ]]; then
+                exec bash "${candidate}"
+              fi
+            done
+            echo "Downloading attach-cluster helper..."
+            curl -fsSL -o /tmp/attach_cluster_server.sh \
+              https://raw.githubusercontent.com/magnussolution/magnusbilling/source/script/attach_cluster_server.sh \
+              || curl -fsSL -o /tmp/attach_cluster_server.sh \
+              https://raw.githubusercontent.com/magnussolution/magnusbilling7/source/script/attach_cluster_server.sh
+            chmod +x /tmp/attach_cluster_server.sh
+            exec bash /tmp/attach_cluster_server.sh
+            ;;
+        *)
+            echo "Invalid choice."
+            exit 1
+            ;;
+    esac
+}
+
+# Preserve language arg for later (en/br/es) when mode was chosen interactively
+INSTALL_ARGS=("$@")
+select_install_mode "$@"
+# If mode was passed as argv 1, drop it so language select still works
+if [[ "${INSTALL_ARGS[0]:-}" =~ ^[123]$ ]]; then
+  set -- "${INSTALL_ARGS[@]:1}"
+else
+  set -- "${INSTALL_ARGS[@]}"
 fi
+
 get_linux_distribution ()
 {
     if [ ! -r /etc/os-release ]; then
@@ -597,6 +702,18 @@ if ! printf '[general]\ndbhost = 127.0.0.1\ndbname = mbilling\ndbuser = mbilling
   exit 1
 fi
 
+# Keep cluster helpers available after package script/ is removed
+install -d -m 0755 /usr/local/sbin /root/magnusbilling-scripts
+for helper in install_cluster_slave.sh attach_cluster_server.sh installOpenSips-3.6.sh opensips-3.6.cfg sync_opensips_reload.sh; do
+  if [[ -f /var/www/html/mbilling/script/${helper} ]]; then
+    cp -f "/var/www/html/mbilling/script/${helper}" "/root/magnusbilling-scripts/${helper}"
+    chmod +x "/root/magnusbilling-scripts/${helper}" 2>/dev/null || true
+  fi
+done
+cp -f /var/www/html/mbilling/script/attach_cluster_server.sh /usr/local/sbin/mb-attach-cluster 2>/dev/null || true
+cp -f /var/www/html/mbilling/script/install_cluster_slave.sh /usr/local/sbin/mb-install-slave 2>/dev/null || true
+chmod +x /usr/local/sbin/mb-attach-cluster /usr/local/sbin/mb-install-slave 2>/dev/null || true
+
 rm -rf /var/www/html/mbilling/script
 
 echo '[directories](!)
@@ -848,6 +965,15 @@ failregex = .*Username and password combination is invalid - User.*IP: <HOST>
 ignoreregex =
 ' > /etc/fail2ban/filter.d/mbilling_login.conf
 
+cat > /etc/fail2ban/filter.d/mbilling_sql.conf <<'EOF'
+[INCLUDES]
+[Definition]
+# Common SQL-injection / probing patterns in Apache access logs
+failregex = ^<HOST> .*"(GET|POST|HEAD).*(?i)(union([+%%20]|%%20)?select|sleep\(|benchmark\(|information_schema|or[+%%20]1=1|into[+%%20]outfile).*
+            ^<HOST> .*"(GET|POST).*(%%27|%%22).*(%%20or%%20|%%20and%%20).*
+ignoreregex =
+EOF
+
 
 echo "
 [DEFAULT]
@@ -916,6 +1042,14 @@ enabled  = true
 filter   = mbilling_ddos
 logpath  = /var/log/apache2/error.log
 maxretry = 20
+bantime = 3600
+
+[mbilling_sql]
+enabled  = true
+filter   = mbilling_sql
+logpath  = /var/log/apache2/access.log
+maxretry = 5
+findtime = 600
 bantime = 3600" > /etc/fail2ban/jail.local
 
 
@@ -928,6 +1062,10 @@ echo "
 failregex = ^<HOST> \[.*\]$
 ignoreregex =
 " > /etc/fail2ban/filter.d/ip-blacklist.conf
+
+# Allow portal (www-data) to unban instantly from Firewall menu
+echo "www-data ALL=(root) NOPASSWD: /usr/bin/fail2ban-client" > /etc/sudoers.d/mbilling-fail2ban
+chmod 440 /etc/sudoers.d/mbilling-fail2ban
 
 echo "
 [general]

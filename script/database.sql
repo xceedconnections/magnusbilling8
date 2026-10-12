@@ -616,7 +616,9 @@ CREATE TABLE `pkg_cdr` (
   KEY `calledstation` (`calledstation`),
   KEY `src` (`src`),
   KEY `callerid` (`callerid`),
-  KEY `starttime` (`starttime`)
+  KEY `starttime` (`starttime`),
+  KEY `idx_cdr_starttime_user` (`starttime`,`id_user`),
+  KEY `idx_cdr_id_server_start` (`id_server`,`starttime`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -2885,6 +2887,7 @@ CREATE TABLE `pkg_sip` (
   `sip_config` text,
   `description` varchar(150) DEFAULT NULL,
   `id_trunk_group` int DEFAULT NULL,
+  `id_server` int DEFAULT NULL,
   `cnl` varchar(11) NOT NULL DEFAULT '',
   `webrtc` enum('yes','no') NOT NULL DEFAULT 'no',
   PRIMARY KEY (`id`),
@@ -2896,6 +2899,7 @@ CREATE TABLE `pkg_sip` (
   KEY `pkg_sip_hp_index` (`host`,`port`),
   KEY `pkg_sip_ip_index` (`ipaddr`,`port`),
   KEY `fk_pkg_user_pkg_sip_buddies` (`id_user`),
+  KEY `idx_pkg_sip_id_server` (`id_server`),
   KEY `name` (`name`),
   CONSTRAINT `fk_pkg_user_pkg_sip_buddies` FOREIGN KEY (`id_user`) REFERENCES `pkg_user` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;

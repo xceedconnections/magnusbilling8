@@ -65,7 +65,7 @@ class Sip extends Model
         $rules = [
             ['id_user', 'required'],
             ['id_user, calllimit, ringfalse, record_call, voicemail,dial_timeout,trace,amd, voicemail_password,
-                id_trunk_group,max_contacts', 'numerical', 'integerOnly' => true],
+                id_trunk_group,max_contacts,id_server', 'numerical', 'integerOnly' => true],
             ['name, callerid, context, fromuser, fromdomain, md5secret, secret, fullcontact', 'length', 'max' => 80],
             ['regexten, insecure, regserver, vmexten, callingpres, mohsuggest, allowtransfer', 'length', 'max' => 20],
             ['amaflags, dtmfmode, qualify', 'length', 'max' => 7],
@@ -144,6 +144,9 @@ class Sip extends Model
         if ($this->techprefix == 0) {
             $this->techprefix = null;
         }
+        if ($this->id_server === '' || $this->id_server === 0 || $this->id_server === '0') {
+            $this->id_server = null;
+        }
         if ($this->host == 'dynamic') {
             $this->insecure = 'no';
         } else {
@@ -201,6 +204,7 @@ class Sip extends Model
         return [
             'idUser'       => [self::BELONGS_TO, 'User', 'id_user'],
             'idTrunkGroup' => [self::BELONGS_TO, 'TrunkGroup', 'id_trunk_group'],
+            'idServer'     => [self::BELONGS_TO, 'Servers', 'id_server'],
         ];
     }
 }

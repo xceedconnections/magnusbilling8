@@ -180,7 +180,9 @@ systemctl restart opensips
 mysql -u root -p$(awk '{print $1}' /root/passwordMysql.log) opensips -e "ALTER TABLE subscriber ADD accountcode VARCHAR( 50 ) NOT NULL"
 mysql -u root -p$(awk '{print $1}' /root/passwordMysql.log) opensips -e "ALTER TABLE subscriber ADD trace TINYINT(1) NOT NULL DEFAULT '0'"
 mysql -u root -p$(awk '{print $1}' /root/passwordMysql.log) opensips -e "ALTER TABLE subscriber ADD  cpslimit INT( 11 ) NOT NULL DEFAULT  '-1'"
-mysql -u root -p$(awk '{print $1}' /root/passwordMysql.log) opensips -e "ALTER TABLE address CHANGE context_info  context_info CHAR( 70 ) NULL DEFAULT NULL ;"
+mysql -u root -p$(awk '{print $1}' /root/passwordMysql.log) opensips -e "ALTER TABLE subscriber ADD pin_server VARCHAR(80) NOT NULL DEFAULT ''"
+mysql -u root -p$(awk '{print $1}' /root/passwordMysql.log) opensips -e "ALTER TABLE subscriber ADD directmedia VARCHAR(10) NOT NULL DEFAULT 'no'"
+mysql -u root -p$(awk '{print $1}' /root/passwordMysql.log) opensips -e "ALTER TABLE address CHANGE context_info  context_info VARCHAR(255) NULL DEFAULT NULL ;"
 
 # Runtime STIR/SHAKEN policy and credentials. Verification is enabled in
 # monitor-only mode by default; signing remains disabled until an STI
